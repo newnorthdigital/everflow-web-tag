@@ -1,5 +1,5 @@
 homepage: "https://everflow.io"
 documentation: "https://github.com/newnorthdigital/everflow-web-tag/blob/main/README.md"
 versions:
-  - sha: 9f42c0de56a80e72ac4173ddee762affa444de17
+  - sha: 1bc1a3cb9954a37c188375be72e6ce98a41a5409
     changeNotes: "Initial release."
