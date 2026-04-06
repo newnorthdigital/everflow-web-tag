@@ -189,7 +189,7 @@ injectScript(scriptUrl, function() {
     if (data.eventId) convParams.event_id = makeInteger(data.eventId);
     if (data.advEventId) convParams.adv_event_id = makeInteger(data.advEventId);
 
-    debugLog('Conversion: ' + JSON.stringify(convParams));
+    debugLog('Firing conversion for order: ' + makeString(data.orderId || 'N/A'));
     callInWindow('EF.conversion', convParams);
     data.gtmOnSuccess();
 
