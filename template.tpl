@@ -44,7 +44,7 @@ ___TEMPLATE_PARAMETERS___
     "name": "trackingDomain",
     "displayName": "Tracking domain",
     "simpleValueType": true,
-    "help": "Your Everflow tracking domain including subdomain (e.g. www.example-tracking.com). Do not include https:// or a trailing slash.",
+    "help": "Your Everflow tracking subdomain (e.g. partner.everflow.io). Do not include https:// or a trailing slash. If you use a white-labeled custom tracking domain, add it under the tag's Permissions > Injects scripts after installing this template.",
     "alwaysInSummary": true,
     "valueValidators": [{"type": "NON_EMPTY"}]
   },
@@ -147,8 +147,6 @@ ___SANDBOXED_JS_FOR_WEB_TEMPLATE___
 var log = require('logToConsole');
 var injectScript = require('injectScript');
 var callInWindow = require('callInWindow');
-var copyFromWindow = require('copyFromWindow');
-var setInWindow = require('setInWindow');
 var makeString = require('makeString');
 var makeNumber = require('makeNumber');
 var makeInteger = require('makeInteger');
@@ -226,14 +224,6 @@ ___WEB_PERMISSIONS___
               {
                 "type": 1,
                 "string": "https://*.everflow.io/scripts/main.js"
-              },
-              {
-                "type": 1,
-                "string": "https://*/scripts/sdk/everflow.js"
-              },
-              {
-                "type": 1,
-                "string": "https://*/scripts/main.js"
               }
             ]
           }
