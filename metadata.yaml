@@ -1,5 +1,7 @@
 homepage: "https://everflow.io"
 documentation: "https://github.com/newnorthdigital/everflow-web-tag/blob/main/README.md"
 versions:
+  - sha: af99e428117a399d55abe53034af6f0b18e40d16
+    changeNotes: "Embed vendor logo as 96x96 PNG thumbnail; add canonical BOM."
   - sha: 2ce9016fee3d4d93bbe88885d480103fa47d589b
     changeNotes: "Initial release."
