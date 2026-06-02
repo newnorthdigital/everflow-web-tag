@@ -1,6 +1,8 @@
 homepage: "https://everflow.io"
 documentation: "https://github.com/newnorthdigital/everflow-web-tag/blob/main/README.md"
 versions:
+  - sha: 33800a4cd43696320657c6ef5998bafea52a81ff
+    changeNotes: "Rename to 'Everflow Conversion Tracking by New North Digital' to clarify non-vendor ownership (gallery naming rule)."
   - sha: 7e97ac5d203a4a40ac24c9affd9f56ec89dc5559
     changeNotes: "Remove wildcard-host inject_script URLs + unused requires."
   - sha: af99e428117a399d55abe53034af6f0b18e40d16

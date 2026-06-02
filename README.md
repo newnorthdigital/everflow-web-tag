@@ -14,7 +14,7 @@ Google Tag Manager web tag template for [Everflow](https://everflow.io) performa
 ### From the Community Template Gallery
 
 1. In your GTM container, go to **Templates** > **Tag Templates** > **Search Gallery**
-2. Search for **Everflow** and select the template by New North Digital
+2. Search for **Everflow Conversion Tracking by New North Digital**
 3. Click **Add to workspace**
 
 ### Manual installation
