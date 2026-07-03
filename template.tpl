@@ -132,6 +132,33 @@ ___TEMPLATE_PARAMETERS___
   },
   {
     "type": "GROUP",
+    "name": "consentGroup",
+    "displayName": "Consent",
+    "groupStyle": "ZIPPY_OPEN",
+    "subParams": [
+      {
+        "type": "SELECT",
+        "name": "consentMode",
+        "displayName": "Consent handling",
+        "macrosInSelect": false,
+        "selectItems": [
+          {
+            "value": "auto",
+            "displayValue": "Follow GTM Consent Mode (ad_storage)"
+          },
+          {
+            "value": "off",
+            "displayValue": "Fire immediately (I gate consent elsewhere)"
+          }
+        ],
+        "simpleValueType": true,
+        "defaultValue": "auto",
+        "help": "\"Follow GTM Consent Mode\" (recommended) fires only once ad_storage is granted, and waits for consent if it is not yet given. \"Fire immediately\" runs right away, for when you gate consent with GTM's tag-level consent settings or a consent trigger. Consent that is never configured counts as granted, so sites without Consent Mode are unaffected."
+      }
+    ]
+  },
+  {
+    "type": "GROUP",
     "name": "debugging",
     "displayName": "Debugging",
     "groupStyle": "ZIPPY_CLOSED",
@@ -150,6 +177,8 @@ var callInWindow = require('callInWindow');
 var makeString = require('makeString');
 var makeNumber = require('makeNumber');
 var makeInteger = require('makeInteger');
+var isConsentGranted = require('isConsentGranted');
+var addConsentListener = require('addConsentListener');
 
 var enableDebug = data.debug;
 var debugLog = function(msg) {
@@ -162,44 +191,74 @@ var actionType = data.actionType;
 
 debugLog('Action: ' + actionType + ', Domain: ' + trackingDomain);
 
-injectScript(scriptUrl, function() {
-  debugLog('SDK loaded');
-
-  if (actionType === 'click') {
-    var clickParams = {
-      offer_id: makeInteger(data.offerId),
-      affiliate_id: makeInteger(data.affiliateId)
-    };
-
-    debugLog('Click: offer=' + clickParams.offer_id + ', affiliate=' + clickParams.affiliate_id);
-    callInWindow('EF.click', clickParams);
-    data.gtmOnSuccess();
-
-  } else if (actionType === 'conversion') {
-    var convParams = {};
-
-    if (data.convOfferId) convParams.offer_id = makeInteger(data.convOfferId);
-    if (data.advertiserId) convParams.aid = makeInteger(data.advertiserId);
-    if (data.transactionId) convParams.transaction_id = makeString(data.transactionId);
-    if (data.amount) convParams.amount = makeNumber(data.amount);
-    if (data.orderId) convParams.order_id = makeString(data.orderId);
-    if (data.couponCode) convParams.coupon_code = makeString(data.couponCode);
-    if (data.eventId) convParams.event_id = makeInteger(data.eventId);
-    if (data.advEventId) convParams.adv_event_id = makeInteger(data.advEventId);
-
-    debugLog('Firing conversion for order: ' + makeString(data.orderId || 'N/A'));
-    callInWindow('EF.conversion', convParams);
-    data.gtmOnSuccess();
-
-  } else {
-    debugLog('Unknown action type');
-    data.gtmOnFailure();
+// Load the Everflow SDK and fire the click or conversion. Guarded so it runs at
+// most once, even if the consent listener fires more than once.
+var hasFired = false;
+var fire = function() {
+  if (hasFired) {
+    return;
   }
+  hasFired = true;
 
-}, function() {
-  debugLog('SDK failed to load from ' + scriptUrl);
-  data.gtmOnFailure();
-}, 'everflow-sdk');
+  injectScript(scriptUrl, function() {
+    debugLog('SDK loaded');
+
+    if (actionType === 'click') {
+      var clickParams = {
+        offer_id: makeInteger(data.offerId),
+        affiliate_id: makeInteger(data.affiliateId)
+      };
+
+      debugLog('Click: offer=' + clickParams.offer_id + ', affiliate=' + clickParams.affiliate_id);
+      callInWindow('EF.click', clickParams);
+      data.gtmOnSuccess();
+
+    } else if (actionType === 'conversion') {
+      var convParams = {};
+
+      if (data.convOfferId) convParams.offer_id = makeInteger(data.convOfferId);
+      if (data.advertiserId) convParams.aid = makeInteger(data.advertiserId);
+      if (data.transactionId) convParams.transaction_id = makeString(data.transactionId);
+      if (data.amount) convParams.amount = makeNumber(data.amount);
+      if (data.orderId) convParams.order_id = makeString(data.orderId);
+      if (data.couponCode) convParams.coupon_code = makeString(data.couponCode);
+      if (data.eventId) convParams.event_id = makeInteger(data.eventId);
+      if (data.advEventId) convParams.adv_event_id = makeInteger(data.advEventId);
+
+      debugLog('Firing conversion for order: ' + makeString(data.orderId || 'N/A'));
+      callInWindow('EF.conversion', convParams);
+      data.gtmOnSuccess();
+
+    } else {
+      debugLog('Unknown action type');
+      data.gtmOnFailure();
+    }
+
+  }, function() {
+    debugLog('SDK failed to load from ' + scriptUrl);
+    data.gtmOnFailure();
+  }, 'everflow-sdk');
+};
+
+// Consent gate. Everflow click and conversion tracking sets and reads
+// first-party cookies for attribution, which requires ad_storage. In the
+// default "auto" mode the tag follows GTM Consent Mode: it fires once
+// ad_storage is granted and waits (via a consent listener) if it is not yet.
+// Choose "Fire immediately" to gate consent at the container level instead.
+// Note: isConsentGranted returns true when consent is not configured, so sites
+// without Consent Mode keep firing.
+var consentMode = data.consentMode || 'auto';
+
+if (consentMode === 'off' || isConsentGranted('ad_storage')) {
+  fire();
+} else {
+  debugLog('Waiting for ad_storage consent');
+  addConsentListener('ad_storage', function(consentType, granted) {
+    if (granted) {
+      fire();
+    }
+  });
+}
 
 
 ___WEB_PERMISSIONS___
@@ -322,6 +381,58 @@ ___WEB_PERMISSIONS___
       "isEditedByUser": true
     },
     "isRequired": true
+  },
+  {
+    "instance": {
+      "key": {
+        "publicId": "access_consent"
+      },
+      "param": [
+        {
+          "key": "consentTypes",
+          "value": {
+            "type": 2,
+            "listItem": [
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "consentType"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "ad_storage"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "clientAnnotations": {
+      "isEditedByUser": true
+    },
+    "isRequired": true
   }
 ]
 
@@ -336,6 +447,7 @@ scenarios:
       trackingDomain: 'www.example-tracking.com',
       offerId: '42',
       affiliateId: '7',
+      consentMode: 'off',
       debug: false
     };
 
@@ -356,6 +468,7 @@ scenarios:
       amount: '29.99',
       orderId: 'ORD-12345',
       couponCode: 'SAVE10',
+      consentMode: 'off',
       debug: false
     };
 
@@ -375,6 +488,7 @@ scenarios:
       advertiserId: '5',
       amount: '49.99',
       transactionId: 'abc123def',
+      consentMode: 'off',
       debug: true
     };
 
@@ -393,6 +507,7 @@ scenarios:
       trackingDomain: 'www.example-tracking.com',
       offerId: '42',
       affiliateId: '7',
+      consentMode: 'off',
       debug: false
     };
 
@@ -402,6 +517,98 @@ scenarios:
 
     runCode(mockData);
     assertApi('gtmOnFailure').wasCalled();
+- name: "Consent - auto mode fires when ad_storage is already granted"
+  code: |-
+    var mockData = {
+      actionType: 'click',
+      trackingDomain: 'www.example-tracking.com',
+      offerId: '42',
+      affiliateId: '7',
+      consentMode: 'auto',
+      debug: false
+    };
+
+    mock('isConsentGranted', function(type) { return true; });
+    mock('injectScript', function(url, success, failure, token) {
+      success();
+    });
+    mock('callInWindow', function() {});
+
+    runCode(mockData);
+
+    assertApi('injectScript').wasCalled();
+    assertApi('addConsentListener').wasNotCalled();
+    assertApi('gtmOnSuccess').wasCalled();
+- name: "Consent - auto mode waits when ad_storage is denied"
+  code: |-
+    var mockData = {
+      actionType: 'click',
+      trackingDomain: 'www.example-tracking.com',
+      offerId: '42',
+      affiliateId: '7',
+      consentMode: 'auto',
+      debug: false
+    };
+
+    mock('isConsentGranted', function(type) { return false; });
+    mock('addConsentListener', function(type, callback) {});
+    mock('injectScript', function(url, success, failure, token) {
+      success();
+    });
+    mock('callInWindow', function() {});
+
+    runCode(mockData);
+
+    assertApi('addConsentListener').wasCalled();
+    assertApi('injectScript').wasNotCalled();
+- name: "Consent - fires once after ad_storage is granted via the listener"
+  code: |-
+    var mockData = {
+      actionType: 'click',
+      trackingDomain: 'www.example-tracking.com',
+      offerId: '42',
+      affiliateId: '7',
+      consentMode: 'auto',
+      debug: false
+    };
+
+    mock('isConsentGranted', function(type) { return false; });
+    mock('addConsentListener', function(type, callback) {
+      callback(type, true);
+    });
+    var injectCount = 0;
+    mock('injectScript', function(url, success, failure, token) {
+      injectCount++;
+      success();
+    });
+    mock('callInWindow', function() {});
+
+    runCode(mockData);
+
+    assertThat(injectCount).isEqualTo(1);
+    assertApi('gtmOnSuccess').wasCalled();
+- name: "Consent - fire immediately skips the consent check"
+  code: |-
+    var mockData = {
+      actionType: 'click',
+      trackingDomain: 'www.example-tracking.com',
+      offerId: '42',
+      affiliateId: '7',
+      consentMode: 'off',
+      debug: false
+    };
+
+    mock('isConsentGranted', function(type) { return false; });
+    mock('injectScript', function(url, success, failure, token) {
+      success();
+    });
+    mock('callInWindow', function() {});
+
+    runCode(mockData);
+
+    assertApi('injectScript').wasCalled();
+    assertApi('addConsentListener').wasNotCalled();
+    assertApi('gtmOnSuccess').wasCalled();
 
 
 ___NOTES___

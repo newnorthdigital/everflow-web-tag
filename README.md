@@ -7,6 +7,7 @@ Google Tag Manager web tag template for [Everflow](https://everflow.io) performa
 - **Click tracking** - Record affiliate clicks with Offer ID and Affiliate ID. Sets a first-party cookie for conversion attribution.
 - **Conversion tracking** - Fire conversions with amount, order ID, coupon code, and event identifiers.
 - **Custom tracking domain** - Works with any Everflow tracking domain.
+- Built-in Consent Mode gate: follows GTM Consent Mode by default, firing only once `ad_storage` is granted and waiting for consent otherwise.
 - **Debug logging** - Optional console logging for troubleshooting in GTM Preview mode.
 
 ## Installation
@@ -58,6 +59,13 @@ Create a tag with the following settings:
 
 **Trigger:** Fire on the order confirmation / thank-you page.
 
+## Consent
+
+Both tracking modes set and read first-party cookies for attribution, which needs `ad_storage`. The **Consent handling** field controls how the tag reacts to GTM Consent Mode:
+
+- **Follow GTM Consent Mode (ad_storage)** (default, recommended) - fires only once `ad_storage` is granted, and waits via a consent listener if it is not yet given. Consent that is never configured counts as granted, so sites without Consent Mode are unaffected.
+- **Fire immediately (I gate consent elsewhere)** - runs right away, for when you gate consent with GTM's tag-level consent settings or a consent trigger.
+
 ## Permissions
 
 This template requests the following permissions:
@@ -66,6 +74,7 @@ This template requests the following permissions:
 |------------|--------|
 | Inject script | Loads the Everflow SDK from your tracking domain |
 | Access globals | Calls `EF.click` and `EF.conversion` on the global scope |
+| Access consent | Reads `ad_storage` consent state and listens for changes |
 | Logging | Debug messages in GTM Preview mode |
 
 ## Resources
