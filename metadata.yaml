@@ -1,6 +1,8 @@
 homepage: "https://everflow.io"
 documentation: "https://github.com/newnorthdigital/everflow-web-tag/blob/main/README.md"
 versions:
+  - sha: a94d682a3f4a8f841ba63583f992ec4a7dbde3fe
+    changeNotes: 'Add built-in GTM Consent Mode gate: fires only once consent is granted, with a Fire-immediately option.'
   - sha: 6e6e4425c256d7f91d0487c03817b8b7044a365e
     changeNotes: 'NND-badge icon and shortened display name (by New North).'
   - sha: 33800a4cd43696320657c6ef5998bafea52a81ff
